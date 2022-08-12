@@ -6,7 +6,7 @@ import albumentations as A
 from utils import list_images
 
 
-class NSFWDataset(torch.utils.data.Dataset):
+class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, data_paths, transforms=None):
         self.transforms = transforms
         self.labels = []
