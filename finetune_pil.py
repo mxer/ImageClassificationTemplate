@@ -13,7 +13,7 @@ from torchvision import transforms, datasets
 import torch.nn.functional as F
 
 import utils
-from datasets import get_datasets, get_data_loaders
+from datasets_pil import get_datasets, get_data_loaders
 from model import build_model
 
 # 慎用，最好手动对超出尺寸的图片进行裁剪
