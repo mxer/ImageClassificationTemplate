@@ -16,9 +16,6 @@ import utils
 from datasets_cv2 import *
 from model import build_model
 
-# 慎用，最好手动对超出尺寸的图片进行裁剪
-#from PIL import ImageFile
-#ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 def get_lr(optimizer):
     """Get the current learning rate from optimizer.
@@ -28,7 +25,7 @@ def get_lr(optimizer):
 
 def build_loaders(data_paths, mode, args):
     transforms = get_transforms(args.resize, args.crop, mode=mode, pretrained=args.pretrain)
-    dataset = NSFWDataset(
+    dataset = ImageDataset(
         data_paths,
         transforms=transforms,
     )
