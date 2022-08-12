@@ -26,6 +26,6 @@ def build_model(model, pretrained=True, fine_tune=True, weights=None, num_classe
     elif model == 'efficientnetb6':
         model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
     elif model == 'vit_l_16':
-        model.heads.head = nn.Linear(num_ftrs, num_classes)
+        model.heads.head = nn.Linear(model.heads.head.in_features, num_classes)
 
     return model
