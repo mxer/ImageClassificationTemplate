@@ -49,7 +49,7 @@ def get_transforms(size, crop, mode="train", pretrained=True):
     if mode == "train":
         return A.Compose(
             [
-                A.Resize(size, size, always_apply=True),
+                A.Resize(size, size, interpolation=cv2.INTER_LINEAR, always_apply=True),
                 A.RandomCrop(width=crop, height=crop, always_apply=True),
                 A.HorizontalFlip(p=0.5),
                 A.Rotate(30),
@@ -63,7 +63,7 @@ def get_transforms(size, crop, mode="train", pretrained=True):
     else:
         return A.Compose(
             [
-                A.Resize(crop, crop, always_apply=True),
+                A.Resize(crop, crop, interpolation=cv2.INTER_LINEAR, always_apply=True),
                 normalize,
             ]
         )
