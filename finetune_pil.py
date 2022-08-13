@@ -152,7 +152,7 @@ def main(args):
     classes = data_loader.dataset.classes
     #print(classes)
 
-    model = build_model(args.model, pretrained=True, fine_tune=True, weights=args.weight, num_classes=len(classes))
+    model = build_model(args.net, pretrained=True, fine_tune=True, weights=args.weight, num_classes=len(classes))
 
     # support muti gpu
     model = nn.DataParallel(model, device_ids=args.device)
@@ -201,7 +201,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Classification Finetune Training')
 
     parser.add_argument('--data-dir', default='/ssd/nsfw', help='dataset')
-    parser.add_argument('--model', default='resnet50', help='model')
+    parser.add_argument('--net', default='resnet50', help='model name')
     parser.add_argument('--weight', default='IMAGENET1K_V2', help='the weight of pretrained model')
     parser.add_argument('--device', default=[0], help='device')
     parser.add_argument('--pretrain', default=True, help='use pretrained weights or train from scratch')
