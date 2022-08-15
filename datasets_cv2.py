@@ -12,7 +12,7 @@ class ImageDataset(torch.utils.data.Dataset):
         self.labels = []
         self.img_paths = list(list_images(data_paths))
         for img_path in self.img_paths:
-            self.labels.append(img_path.split('/')[-2])
+            self.labels.append(img_path.split('/')[-2]) # dir names are class names
 
         classes = [d.name for d in os.scandir(data_paths) if d.is_dir()]
         classes.sort()
