@@ -37,7 +37,7 @@ def main(args):
     bg_time = time.time()
     for image_name in os.listdir(args.test_path):
         try:
-            image_ = args.test_path + '\\' + image_name
+            image_ = args.test_path + '/' + image_name
             image = cv2.imread(image_)
             image_tensor = transforms_cv2(image, resize=(args.resize, args.resize))
             input = image_tensor.to(device)
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--test-path', default='./data/beauty', help='dataset')
     parser.add_argument('--net', default='resnet50', help='model name')
-    parser.add_argument('--device', default='cpu', help='device, cpu or cuda')
+    parser.add_argument('--device', default='cpu', choices=['cuda', 'cpu'], help='device, cpu or cuda')
     parser.add_argument('--checkpoint', default='./checkpoints/model_2_600.pth', help='checkpoint')
     parser.add_argument('--resize', default=224, help='size of resize')
 
