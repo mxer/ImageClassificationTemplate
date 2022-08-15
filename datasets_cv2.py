@@ -10,14 +10,13 @@ class ImageDataset(torch.utils.data.Dataset):
     def __init__(self, data_paths, transforms=None):
         self.transforms = transforms
         self.labels = []
-        self.img_paths = list(paths.list_images(data_paths))
+        self.img_paths = list(list_images(data_paths))
         for img_path in self.img_paths:
             self.labels.append(img_path.split('/')[-2])
 
         classes = [d.name for d in os.scandir(data_paths) if d.is_dir()]
         classes.sort()
         class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
-
 
         self.classes = classes
         self.class_to_idx = class_to_idx
@@ -32,10 +31,9 @@ class ImageDataset(torch.utils.data.Dataset):
         if self.transforms:
             augmented = self.transforms(image=image)
             image = augmented['image']
-            image = torch.tensor(image).permute(2, 0, 1).float()
+            image = torch.from_numpy(image).permute(2, 0, 1).float()
 
         label = self.class_to_idx[self.labels[idx]]
-        label = torch.tensor(label)
 
         return image, label
 
