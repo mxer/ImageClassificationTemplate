@@ -29,8 +29,7 @@ class ImageDataset(torch.utils.data.Dataset):
         image = cv2.imread(img_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         if self.transforms:
-            augmented = self.transforms(image=image)
-            image = augmented['image']
+            image = self.transforms(image=image)['image']
             image = torch.from_numpy(image).permute(2, 0, 1).float()
 
         label = self.class_to_idx[self.labels[idx]]
