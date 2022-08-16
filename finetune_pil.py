@@ -236,9 +236,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.milestones = [int(num) for num in args.step.split(',')]
-
-    if not os.path.exists(args.save_path):
-        os.makedirs(args.save_path)
+    
+    os.makedirs(args.save_path) if not os.path.exists(args.save_path) else None
 
     g_val_accs = {}
 
