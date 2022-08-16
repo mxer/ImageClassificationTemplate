@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--net', default='resnet50', help='model name')
     parser.add_argument('--device', default='cpu', choices=['cuda', 'cpu'], help='device, cpu or cuda')
     parser.add_argument('--checkpoint', default='./checkpoints/model_2_600.pth', help='checkpoint')
-    parser.add_argument('--resize', default=224, help='size of resize')
+    parser.add_argument('--resize', default=224, type=int, help='size of resize')
 
     args = parser.parse_args()
 
