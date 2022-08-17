@@ -8,7 +8,7 @@ import torch
 from torch import nn
 
 from utils.build_model import build_model
-import utils.utils as utils
+from utils.plot_display import *
 from datasets import *
 
 from sklearn.metrics import confusion_matrix, classification_report
@@ -16,7 +16,7 @@ from utils.metric import evaluate_accuracy
 
 def build_loaders(data_paths, mode, args):
     transforms = get_transforms(args.input_size, args.input_size, mode=mode, pretrained=True)
-    dataset = ImageDataset(
+    dataset = NSFWDataset(
         data_paths,
         transforms=transforms,
     )
@@ -97,7 +97,7 @@ def main(args):
 
     # Plot normalized confusion matrix
     plt.figure()
-    utils.plot_confusion_matrix(cnf_matrix, classes=classes, normalize=True,
+    plot_confusion_matrix(cnf_matrix, classes=classes, normalize=True,
                       title='Normalized confusion matrix')
     os.makedirs('plt_images') if not os.path.exists('plt_images') else None
     plt.savefig('./plt_images/test_confusion_matrix.jpg')
