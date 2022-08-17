@@ -21,7 +21,6 @@ def main(args):
                         transforms.ToTensor(),
                         normalize,])
     '''
-
     transformation = transforms.Compose([
                         transforms.Resize(224),
                         transforms.ToTensor(),

@@ -25,6 +25,7 @@ def get_train_transform(image_size, crop_size, pretrained):
                     normalize_transform(pretrained)])
     return train_transform
 
+
 # Validation transforms
 def get_valid_transform(crop_size, pretrained):
     valid_transform = transforms.Compose([

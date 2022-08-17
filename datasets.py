@@ -3,7 +3,7 @@ import cv2
 import torch
 import albumentations as A
 
-from utils import list_images
+from utils.paths import list_images
 
 
 class ImageDataset(torch.utils.data.Dataset):
@@ -28,13 +28,31 @@ class ImageDataset(torch.utils.data.Dataset):
         img_path = self.img_paths[idx]
         image = cv2.imread(img_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        if self.transforms:
+        if self.transforms is not None:
             image = self.transforms(image=image)['image']
             image = torch.from_numpy(image).permute(2, 0, 1).float()
 
         label = self.class_to_idx[self.labels[idx]]
 
-        return image, label
+        return image, label, img_path
+
+class TestDataset(torch.utils.data.Dataset):
+    def __init__(self, data_paths, transforms=None):
+        self.transforms = transforms
+        self.img_paths = list(list_images(data_paths))
+
+    def __len__(self):
+        return len(self.img_paths)
+
+    def __getitem__(self, idx):
+        img_path = self.img_paths[idx]
+        image = cv2.imread(img_path)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if self.transforms is not None:
+            image = self.transforms(image=image)['image']
+            image = torch.from_numpy(image).permute(2, 0, 1).float()
+
+        return image, img_path
 
 
 def get_transforms(size, crop, mode="train", pretrained=True):
@@ -61,6 +79,7 @@ def get_transforms(size, crop, mode="train", pretrained=True):
         return A.Compose(
             [
                 A.Resize(crop, crop, interpolation=cv2.INTER_LINEAR, always_apply=True),
+                #A.CenterCrop(height=crop, width=crop),
                 normalize,
             ]
         )

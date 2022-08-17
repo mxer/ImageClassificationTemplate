@@ -7,7 +7,7 @@ import cv2
 import torch
 import numpy as np
 
-from model import build_model
+from utils.build_model import build_model
 from collections import OrderedDict
 
 def transforms_cv2(image, resize=(224, 224)):
@@ -20,12 +20,11 @@ def transforms_cv2(image, resize=(224, 224)):
     return image_tensor
 
 def main(args):
-
+    # only use single gpu or cpu
     device = torch.device('cuda:0') if args.device=='cuda' else torch.device(args.device)
     classes = torch.load(args.checkpoint, map_location=torch.device(device))['classes']
     model = build_model(args.net, pretrained=False, fine_tune=False, num_classes=len(classes))
     print('Loading trained model weightes...')
-
     model.load_state_dict({
         k.replace('module.', ''): v for k, v in 
         torch.load(args.checkpoint, map_location=torch.device(device))['model_state_dict'].items()})
@@ -34,6 +33,7 @@ def main(args):
 
     model.eval()
 
+    cnt = 0
     bg_time = time.time()
     for image_name in os.listdir(args.test_path):
         try:
@@ -43,16 +43,19 @@ def main(args):
             input = image_tensor.to(device)
             output = model(input)
 
-            index = output.data.cpu().numpy().argmax()
+            index = output.detach().cpu().numpy().argmax()
             #print(output.data.cpu().numpy())
-            print('{}\t{}\t{}'.format(image_, classes[index], index))
+            print('{}\tpredict: {}\t{}'.format(image_, classes[index], index))
             sys.stdout.flush()
+
+            cnt += 1
 
         except:
             #print(image)
             traceback.print_exc()
 
-    print(f'used time:{time.time() - bg_time}')
+    total_time = time.time() - bg_time
+    print(f'Total used time:{total_time}, Avg used time:{total_time}/{cnt}')
 
 if __name__ == '__main__':
     import argparse

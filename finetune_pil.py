@@ -8,13 +8,9 @@ import math
 import torch
 import torch.utils.data
 from torch import nn
-import torchvision
-from torchvision import transforms, datasets
-import torch.nn.functional as F
 
-import utils
 from datasets_pil import get_datasets, get_data_loaders
-from model import build_model
+from utils.build_model import build_model
 
 # 慎用，最好手动对超出尺寸的图片进行裁剪
 from PIL import ImageFile
@@ -111,7 +107,7 @@ def evaluate(model, criterion, data_loader, epoch, step, args):
             _, preds = torch.max(output, 1)
 
             loss_ = loss.item() * image.size(0) # this batch loss
-            correct_ = torch.sum(preds == target.data) # this batch correct number
+            correct_ = torch.sum(preds == target) # this batch correct number
 
             running_loss += loss_
             running_corrects += correct_
@@ -236,7 +232,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.milestones = [int(num) for num in args.step.split(',')]
-    
+
     os.makedirs(args.save_path) if not os.path.exists(args.save_path) else None
 
     g_val_accs = {}

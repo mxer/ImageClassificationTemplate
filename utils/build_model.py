@@ -19,13 +19,12 @@ def build_model(net, pretrained=True, fine_tune=True, weights=None, num_classes=
         print('[INFO]: Freezing hidden layers...')
         for params in model.parameters():
             params.requires_grad = False
-
     # Change the final classification head.
-    if netl == 'resnet50':
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
-    elif net == 'efficientnetb6':
-        model.classifier[1] = nn.Linear(model.classifier[1].in_features, num_classes)
+    if net == 'resnet50':
+        model.fc = nn.Linear(in_features=model.fc.in_features, out_features=num_classes)
+    elif net == 'efficientnet_b6':
+        model.classifier[1] = nn.Linear(in_features=model.classifier[1].in_features, out_features=num_classes)
     elif net == 'vit_l_16':
-        model.heads.head = nn.Linear(model.heads.head.in_features, num_classes)
+        model.heads.head = nn.Linear(in_features=model.heads.head.in_features, out_features=num_classes)
 
     return model

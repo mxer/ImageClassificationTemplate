@@ -1,4 +1,3 @@
-from __future__ import print_function
 import datetime
 import os
 import time
@@ -8,13 +7,9 @@ import math
 import torch
 import torch.utils.data
 from torch import nn
-import torchvision
-#from torchvision import transforms, datasets
-import torch.nn.functional as F
 
-import utils
-from datasets_cv2 import *
-from model import build_model
+from datasets import *
+from utils.build_model import build_model
 
 
 def get_lr(optimizer):
@@ -35,6 +30,7 @@ def build_loaders(data_paths, mode, args):
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         shuffle=True if mode == "train" else False,
+        pin_memory=True,
     )
 
     return dataloader
@@ -48,7 +44,7 @@ def train_one_epoch(model, criterion, optimizer, lr_scheduler, data_loader, cur_
     print('Train data num: {}'.format(epoch_data_len))
     print('Train batch num: {}'.format(batch_num))
 
-    for batch_idx, (image, target) in enumerate(data_loader):
+    for batch_idx, (image, target, _) in enumerate(data_loader):
         batch_start = time.time()
         image = image.cuda()
         target = target.cuda()
@@ -125,7 +121,7 @@ def evaluate(model, criterion, data_loader, epoch, step, args):
             _, preds = torch.max(output, 1)
 
             loss_ = loss.item() * image.size(0) # this batch loss
-            correct_ = torch.sum(preds == target.data) # this batch correct number
+            correct_ = torch.sum(preds == target) # this batch correct number, tensor(1)
 
             running_loss += loss_
             running_corrects += correct_
