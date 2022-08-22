@@ -70,7 +70,7 @@ def main(args):
             traceback.print_exc()
 
     total_time = time.time() - bg_time
-    print(f'Total used time:{total_time}, Avg used time:{total_time}/{cnt}')
+    print('Total used time:{}, Avg used time:{}'.format(total_time, total_time/cnt))
 
 if __name__ == '__main__':
     import argparse
