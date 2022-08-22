@@ -11,13 +11,14 @@ from utils.build_model import build_model
 from collections import OrderedDict
 
 def transforms_cv2(image, resize=(224, 224)):
-    rs_image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_LINEAR)
-    image = cv2.cvtColor(rs_image, cv2.COLOR_BGR2RGB)
-    image = torch.tensor(image).permute(2, 0, 1).float()
-    image.sub_(127.5).mul_(0.00784313725)
-    image_tensor = image.unsqueeze(0)
+    image = cv2.resize(image, (224, 224), interpolation=cv2.INTER_LINEAR)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = (image.transpose((2, 0, 1)) - 127.5) / 127.5
+    image = image.astype(np.float32)
+    image = torch.from_numpy(image)
+    image = torch.unsqueeze(image, 0)
 
-    return image_tensor
+    return image
 
 def main(args):
     # only use single gpu or cpu
