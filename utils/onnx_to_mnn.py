@@ -1,8 +1,19 @@
+import os
+import re
 import onnxruntime
 import cv2
 import MNN
 import numpy as np
 import argparse
+
+def onnx_to_mnn(onnx_path, mnn_path):
+    cmd = "python -m MNN.tools.mnnconvert -f ONNX --modelFile " + onnx_path + " --MNNModel " + mnn_path + " --bizCode MNN"
+    res_str = os.popen(cmd).read()
+    print(res_str)
+    if "Converted Success" in res_str:
+        return 0
+    else:
+        return -1
 
 def classify_onnx(onnx_path, image_path):
     session = onnxruntime.InferenceSession(onnx_path, None)
@@ -58,6 +69,9 @@ if __name__ == '__main__':
 
     image1 = 'test_images/ffda2bd6-181a-4ec6-9878-3d5a26c73a86_nsfw.jpg'
     image2 = 'test_images/fffbb437-f692-4dba-921e-a5e9b11ebe51_sfw.jpg'
+
+    flag = onnx_to_mnn(args.onnx_path, args.mnn_path)
+    assert flag == 0, "Model converted fail, please retry."
 
     onnx_output1 = classify_onnx(args.onnx_path, image1)
     print(f'onnx output of image1:{onnx_output1}')
