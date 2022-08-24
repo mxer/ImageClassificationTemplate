@@ -12,7 +12,7 @@ class OnnxConvertor:
     """
     def __init__(self):
         pass
-    def convert(self, model, output_path):
+    def convert(self, model, output_path, batch_inf=False):
         img = np.random.randint(0, 255, size=(224,224,3), dtype=np.uint8)
         img = img[:,:,::-1].astype(np.float32)
         #img = (img.transpose((2, 0, 1)) - 127.5) * 0.0078125 # 1/128  
@@ -28,10 +28,11 @@ class OnnxConvertor:
             opset_version=args.opset
         )
         # batch inference.
-        onnx_model = onnx.load(output_path)
-        graph = onnx_model.graph
-        graph.input[0].type.tensor_type.shape.dim[0].dim_param = 'None'
-        onnx.save(onnx_model, output_path)
+        if batch_inf:
+            onnx_model = onnx.load(output_path)
+            graph = onnx_model.graph
+            graph.input[0].type.tensor_type.shape.dim[0].dim_param = 'None'
+            onnx.save(onnx_model, output_path)
 
     def classify_pytorch(self, model, image_path):
         image = cv2.imread(image_path)
@@ -79,10 +80,11 @@ if __name__ == '__main__':
     parser.add_argument('--output_path', type = str, default = '../exps/efficientnetb6/efficientnet_b6@epoch7_3199_0.01.onnx',
                       help = 'The output path of onnx model')
     parser.add_argument('--opset', type=int, default=11, help='opset version.')
+    parser.add_argument('--batch_inf', type=bool, default=False, help='Set if use for batch inference')
     args = parser.parse_args()
 
-    image1 = 'test_images/ffda2bd6-181a-4ec6-9878-3d5a26c73a86.jpg'
-    image2 = 'test_images/fffbb437-f692-4dba-921e-a5e9b11ebe51.jpg'
+    image1 = 'test_images/ffda2bd6-181a-4ec6-9878-3d5a26c73a86_nsfw.jpg'
+    image2 = 'test_images/fffbb437-f692-4dba-921e-a5e9b11ebe51_sfw.jpg'
     
     device = torch.device('cuda:0') if args.device=='cuda' else torch.device(args.device)
     classes = torch.load(args.checkpoint, map_location=torch.device(device))['classes']
