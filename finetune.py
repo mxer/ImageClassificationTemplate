@@ -86,7 +86,7 @@ def train_one_epoch(model, criterion, optimizer, lr_scheduler, data_loader, cur_
                         'epoch': cur_epoch,
                         'batch_id': batch_idx,
                         'classes': classes},
-                        os.path.join(args.save_path, '{}@epoch{}_{}_{}.pth'.format(args.model, cur_epoch, batch_idx, lr)))
+                        os.path.join(args.save_path, '{}@epoch{}_{}_{}.pth'.format(args.net, cur_epoch, batch_idx, lr)))
                     print('*** SAVE.DONE. VAL_BEST_INDEX: {}_{}, VAL_BEST_ACC: {} ***'.format(cur_epoch, batch_idx, val_acc))
             g_val_accs[str(cur_epoch)+'_'+str(batch_idx)] = val_acc
             k = max(g_val_accs, key=g_val_accs.get)
@@ -112,7 +112,7 @@ def evaluate(model, criterion, data_loader, epoch, step, args):
     print('Val data num: {}'.format(epoch_data_len))
 
     with torch.no_grad():
-        for batch_idx, (image, target) in enumerate(data_loader):
+        for batch_idx, (image, target, _) in enumerate(data_loader):
             batch_start = time.time()
             image, target = image.cuda(), target.cuda()
             output = model(image)
