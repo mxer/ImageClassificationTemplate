@@ -1,7 +1,14 @@
+torch+cu11.6
+torchvision
 opencv-python
 pillow
 tqdm
 scikit-learn  
 scipy
 numpy
-albumentations
+onnx
+onnxruntime-gpu
+timm
+torchinfo
+tensorboardX
+mnn # below python3.8

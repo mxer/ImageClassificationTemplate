@@ -7,9 +7,12 @@ import math
 import torch
 import torch.utils.data
 from torch import nn
+import timm
 
-from datasets import *
-from utils.build_model import build_model
+from torchinfo import summary
+
+from data.datasets import *
+from models.build_model import build_model
 
 
 def get_lr(optimizer):
@@ -17,23 +20,6 @@ def get_lr(optimizer):
     """
     for param_group in optimizer.param_groups:
         return param_group['lr']
-
-def build_loaders(data_paths, mode, args):
-    transforms = get_transforms(args.resize, args.crop, mode=mode, pretrained=args.pretrain)
-    dataset = ImageDataset(
-        data_paths,
-        transforms=transforms,
-    )
-
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        shuffle=True if mode == "train" else False,
-        pin_memory=True,
-    )
-
-    return dataloader
 
 def train_one_epoch(model, criterion, optimizer, lr_scheduler, data_loader, cur_epoch, val_dataloader, classes, args):
     epoch_start = time.time()
@@ -150,19 +136,21 @@ def load_ckpt(checkpoint_fpath, model, optimizer, lr_scheduler):
 
 def main(args):
     print("Loading data")
-    traindir = os.path.join(args.data_dir, 'train')
-    valdir = os.path.join(args.data_dir, 'val')
 
     print("Creating data loaders")
-    data_loader = build_loaders(traindir, 'train', args)
-    val_dataloader = build_loaders(valdir, 'val', args)
+    train_loader, val_loader = build_loader(args.data_dir, args.input_size, args.batch_size, args.num_workers)
 
     # show all classes
-    classes = data_loader.dataset.classes
+    classes = train_loader.dataset.classes
     #print(classes)
-
-    model = build_model(args.net, pretrained=True, fine_tune=True, weights=args.weight, num_classes=len(classes))
-
+    if args.hub == 'tv':
+        model = build_model(args.net, pretrained=True, fine_tune=True, weights=args.weight, num_classes=len(classes))
+    elif args.hub == 'timm':
+        #print(timm.list_models(pretrained=True))
+        model = timm.create_model(args.net, pretrained=args.pretrain, num_classes=len(classes))
+    else:
+        raise NameError('Model hub only support tv or timm')
+    summary(model, input_size=(args.batch_size, 3, args.input_size, args.input_size))
     # support muti gpu
     model = nn.DataParallel(model, device_ids=args.device)
     model.cuda()
@@ -172,13 +160,26 @@ def main(args):
     total_trainable_params = sum(
         p.numel() for p in model.parameters() if p.requires_grad)
     print(f"{total_trainable_params:,} training parameters.")
+    param_name = [name for name,_ in model.named_parameters()] # All parameters name
+    layer_name = [name for name,_ in model.named_modules()] # All layers name
+    print(f'param_name: {param_name}')
+    print(f'layer_name: {layer_name}')
 
     #print("Model's state_dict:")
     #for param_tensor in model.state_dict():
     #    print(param_tensor, "\t", model.state_dict()[param_tensor].size())
 
-    criterion = nn.CrossEntropyLoss().cuda(args.device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    if args.optim == 'sgd':
+        optimizer = torch.optim.SGD((param for param in model.parameters() if param.requires_grad), 
+                                     lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    elif args.optim == 'adam':
+        optimizer = torch.optim.Adam((param for param in model.parameters() if param.requires_grad), 
+                                      lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    elif args.optim =='adamW':
+        optimizer = torch.optim.AdamW((param for param in model.parameters() if param.requires_grad), 
+                                       lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+
+    criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing).cuda(args.device)
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=args.lr_gamma)
 
     start_epoch = 0
@@ -189,14 +190,14 @@ def main(args):
         model, optimizer, lr_scheduler, start_epoch = load_ckpt(args.checkpoint, model, optimizer, lr_scheduler)
 
     #if args.test_only:
-    #    evaluate(model, criterion, val_dataloader)
+    #    evaluate(model, criterion, val_loader)
     #    return
 
     print("Start training")
     start_time = time.time()
     model.train()
     for epoch in range(start_epoch, args.epochs):
-        train_one_epoch(model, criterion, optimizer, lr_scheduler, data_loader, epoch, val_dataloader, classes, args)
+        train_one_epoch(model, criterion, optimizer, lr_scheduler, train_loader, epoch, val_loader, classes, args)
         lr_scheduler.step()
 
     total_time = time.time() - start_time
@@ -206,9 +207,10 @@ def main(args):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='PyTorch Classification Finetune Training')
+    parser = argparse.ArgumentParser(description='PyTorch/timm Finetune Training')
 
-    parser.add_argument('--data-dir', default='/ssd/nsfw', help='dataset')
+    parser.add_argument('--data-dir', default='/data', help='dataset')
+    parser.add_argument('--hub', default='tv', help='model hub, from torchvision(tv) or timm')
     parser.add_argument('--net', default='resnet50', help='model name')
     parser.add_argument('--weight', default='IMAGENET1K_V2', help='the weight of pretrained model')
     parser.add_argument('--device', default=[0], help='device')
@@ -218,8 +220,9 @@ if __name__ == "__main__":
                         help='number of total epochs to run')
     parser.add_argument('--step', default='10,20,25', type=str,
                         help='steps for MultiStepLR, the last num should less then the num of epochs')
-    parser.add_argument('-j', '--num_workers', default=8, type=int, metavar='N',
+    parser.add_argument('-j', '--num-workers', default=8, type=int, metavar='N',
                         help='number of data loading workers (default: 8)')
+    parser.add_argument('--optim', default='sgd', help='optimization method')
     parser.add_argument('--lr', default=0.0001, type=float,
                         help='initial learning rate,0.0001 for vit, 0.01 for resnet and efficientnet')
     parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
@@ -228,13 +231,14 @@ if __name__ == "__main__":
                         metavar='W', help='weight decay (default: 1e-4)',
                         dest='weight_decay')
     parser.add_argument('--lr-gamma', default=0.1, type=float, help='decrease lr by a factor of lr-gamma')
+    parser.add_argument('-ls', '--label-smoothing', type=float, default=0.0,
+                        help='label smoothing rate in cross entropy loss')
     parser.add_argument('--print-freq', default=10, type=int, help='print frequency')
     parser.add_argument('--eval-freq', default=50, type=int, help='validation frequency of batchs')
-    parser.add_argument('--save_path', default='./exps', help='path where to save')
+    parser.add_argument('--save-path', default='./exps', help='path where to save')
     parser.add_argument('--resume', default=False, help='resume from checkpoint')
     parser.add_argument('--checkpoint', help='the resume checkpoint, need --resume to be True')
-    parser.add_argument('--resize', default=256, type=int, help='size of resize')
-    parser.add_argument('--crop', default=224, type=int, help='size of crop')
+    parser.add_argument('--input-size', default=224, type=int, help='size of input')
     parser.add_argument(
         "--test-only",
         dest="test_only",

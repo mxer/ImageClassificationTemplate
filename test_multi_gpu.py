@@ -4,31 +4,16 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-#import torch.utils.data
 from torch import nn
+import timm
 
-from utils.build_model import build_model
+from models.build_model import build_model
 from utils.plot_display import *
-from datasets import *
+from data.datasets import build_loader
 
 from sklearn.metrics import confusion_matrix, classification_report
 from utils.metric import evaluate_accuracy
 
-def build_loaders(data_paths, mode, args):
-    transforms = get_transforms(args.input_size, args.input_size, mode=mode, pretrained=True)
-    dataset = NSFWDataset(
-        data_paths,
-        transforms=transforms,
-    )
-
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        shuffle=True if mode == "train" else False,
-    )
-
-    return dataloader
 
 def test(model, data_loader, classes):
     n = len(data_loader.dataset)
@@ -66,17 +51,21 @@ def test(model, data_loader, classes):
 
 
 def main(args):
-    print("Loading data")
-    testdir = os.path.join(args.data_dir, 'test')
 
     print("Creating data loaders")
-    test_dataloader = build_loaders(testdir, 'test', args)
+    _, test_loader = build_loader(args.data_dir, args.input_size, args.batch_size, args.num_workers)
 
     # show all classes
-    classes = test_dataloader.dataset.classes
+    classes = test_loader.dataset.classes
     print(classes)
 
-    model = build_model(args.net, pretrained=False, fine_tune=False, num_classes=len(classes))
+    if args.hub == 'tv':
+        model = build_model(args.net, pretrained=False, fine_tune=False, num_classes=len(classes))
+    elif args.hub == 'timm':
+        #print(timm.list_models(pretrained=True))
+        model = timm.create_model(args.net, pretrained=False, num_classes=len(classes))
+    else:
+        raise NameError('Model hub only support tv or timm')
     # support muti gpu
     model = nn.DataParallel(model, device_ids=args.device)
     model.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])
@@ -85,7 +74,7 @@ def main(args):
     model.eval()
 
     bg_time = time.time()
-    y_pred, y_true, mis_cls_images = test(model, test_dataloader, classes)
+    y_pred, y_true, mis_cls_images = test(model, test_loader, classes)
 
     total_time = time.time() - bg_time
     print(f'Total used time:{total_time}')
@@ -118,14 +107,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='PyTorch Classification Test')
 
-    parser.add_argument('--data_dir', default='/ssd_1t/xum/nsfw/two_class/nsfw_binary', help='dataset')
+    parser.add_argument('--data-dir', default='/data/beauty', help='dataset')
+    parser.add_argument('--hub', default='tv', help='model hub, from torchvision(tv) or timm')
     parser.add_argument('--net', default='efficientnet_b6', help='model name')
     parser.add_argument('--device', default=[0], help='device')
-    parser.add_argument('-b', '--batch_size', default=32, type=int, help='batch size')
-    parser.add_argument('-j', '--num_workers', default=8, type=int, metavar='N',
+    parser.add_argument('-b', '--batch-size', default=32, type=int, help='batch size')
+    parser.add_argument('-j', '--num-workers', default=8, type=int, metavar='N',
                         help='number of data loading workers (default: 8)')
     parser.add_argument('--checkpoint', default='exps/efficientnetb6/efficientnet_b6@epoch7_3199_0.01.pth', help='checkpoint')
-    parser.add_argument('--input_size', default=224, type=int, help='size of input')
+    parser.add_argument('--input-size', default=224, type=int, help='size of input')
 
     args = parser.parse_args()
 

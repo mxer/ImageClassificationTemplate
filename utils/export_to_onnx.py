@@ -1,11 +1,14 @@
-
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
+import timm
 import numpy as np
 import onnx
 import onnxruntime
 import cv2
 import argparse
-from build_model import build_model
+from models.build_model import build_model
 
 class OnnxConvertor:
     """Convert a pytorch model to a onnx model.
@@ -13,7 +16,7 @@ class OnnxConvertor:
     def __init__(self):
         pass
     def convert(self, model, output_path, batch_inf=False):
-        img = np.random.randint(0, 255, size=(224,224,3), dtype=np.uint8)
+        img = np.random.randint(0, 255, size=(224, 224, 3), dtype=np.uint8)
         img = img[:,:,::-1].astype(np.float32)
         #img = (img.transpose((2, 0, 1)) - 127.5) * 0.0078125 # 1/128  
         img = (img.transpose((2, 0, 1)) - 127.5) * 0.00784313725 # 1/127.5
@@ -51,44 +54,62 @@ class OnnxConvertor:
         return output
 
     def classify_onnx(self, output_path, image_path):
-        session = onnxruntime.InferenceSession(output_path, None)
-        input_cfg = session.get_inputs()[0]
-        input_name = input_cfg.name
-        outputs = session.get_outputs()
-        output_names = []
-        for o in outputs:
-            output_names.append(o.name)
+        #session =  onnxruntime.InferenceSession(output_path, providers=['TensorrtExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider'])
+        #session =  onnxruntime.InferenceSession(output_path, providers=['CUDAExecutionProvider'])
+        session =  onnxruntime.InferenceSession(output_path, providers=['CPUExecutionProvider', 'CUDAExecutionProvider', 'TensorrtExecutionProvider'])
+        #print(session.get_providers())
+        model_inputs = session.get_inputs()
+        input_names = [model_inputs[i].name for i in range(len(model_inputs))]
+        #input_name = session.get_inputs()[0].name
+        #print(f'input_name:{input_name}')
+        #outputs = session.get_outputs()
+        #output_names = []
+        #for o in outputs:
+        #    output_names.append(o.name)
+        model_outputs = session.get_outputs()
+        output_names = [model_outputs[i].name for i in range(len(model_outputs))]
+        #output_name = [output.name for output in session.get_outputs()]
+        #print(output_names)
         image = cv2.imread(image_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         images = []
         images.append(image)
-        blob = cv2.dnn.blobFromImages(images, 1.0/127.5, (224, 224), (127.5, 127.5, 127.5), swapRB=False)
-        net_out = session.run(output_names, {input_name : blob})[0]
-        output = net_out[0]
-        #print(f'output of onnx model:{output}')
-        output = output/np.linalg.norm(output)
-        return output
+        blob = cv2.dnn.blobFromImages(images, 1.0/127.5, (224, 224), (127.5, 127.5, 127.5), swapRB=True)
+        net_out = session.run(output_names, {input_names[0] : blob})[0]
+        #print(f'net_out:{net_out}')
+        #net_out = session.run(output_name, {input_name : blob})[0]
+        #net_out = session.run(None, {input_name : blob})[0]
+        feature = net_out[0]
+        #print(f'feature:{feature}')
+        feature = feature/np.linalg.norm(feature)
+        return feature
         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='export model to onnx.')
-    parser.add_argument('--net_name', type=str, default='efficientnet_b6', 
+    parser.add_argument('--hub', default='timm', help='model hub, from torchvision(tv) or timm')
+    parser.add_argument('--net-name', type=str, default='efficientnet_b1_pruned', 
                       help = 'The Neural Network name')
-    parser.add_argument('--checkpoint', type = str, default = '../exps/efficientnetb6/efficientnet_b6@epoch7_3199_0.01.pth',
+    parser.add_argument('--checkpoint', type = str, default = 'exps/efficientnet_b1_pruned/efficientnet_b1_pruned@epoch25_399_0.0001.pth',
                       help = 'The path of checkpoint model')
     parser.add_argument('--device', type=str, default='cpu', choices=['cuda', 'cpu'], 
                       help='device, cpu or cuda')
-    parser.add_argument('--output_path', type = str, default = '../exps/efficientnetb6/efficientnet_b6@epoch7_3199_0.01.onnx',
+    parser.add_argument('--output-path', type = str, default = 'exps/efficientnet_b1_pruned/efficientnet_b1_pruned@epoch25_399_0.0001.onnx',
                       help = 'The output path of onnx model')
     parser.add_argument('--opset', type=int, default=11, help='opset version.')
-    parser.add_argument('--batch_inf', type=bool, default=False, help='Set if use for batch inference')
+    parser.add_argument('--batch-inf', type=bool, default=False, help='Set if use for batch inference')
     args = parser.parse_args()
 
-    image1 = 'test_images/ffda2bd6-181a-4ec6-9878-3d5a26c73a86_nsfw.jpg'
-    image2 = 'test_images/fffbb437-f692-4dba-921e-a5e9b11ebe51_sfw.jpg'
+    image1 = 'test_images/1.jpg'
+    image2 = 'test_images/2.jpg'
     
     device = torch.device('cuda:0') if args.device=='cuda' else torch.device(args.device)
     classes = torch.load(args.checkpoint, map_location=torch.device(device))['classes']
-    model = build_model(args.net_name, pretrained=False, fine_tune=False, num_classes=len(classes))
+    if args.hub == 'tv':
+        model = build_model(args.net_name, pretrained=False, fine_tune=False, num_classes=len(classes))
+    elif args.hub == 'timm':
+        #print(timm.list_models(pretrained=True))
+        model = timm.create_model(args.net_name, pretrained=False, num_classes=len(classes))
+    else:
+        raise NameError('Model hub only support tv or timm')
     print('Loading trained model weightes...')
     model.load_state_dict({
         k.replace('module.', ''): v for k, v in 

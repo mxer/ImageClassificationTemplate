@@ -6,39 +6,30 @@ import traceback
 import cv2
 import torch
 import torch.nn as nn
+import timm
+
 import numpy as np
 
-from utils.build_model import build_model
-from datasets import TestDataset, get_transforms
+from models.build_model import build_model
+from data.datasets import build_test_loader
 from collections import OrderedDict
 
-def build_loaders(data_paths, args):
-    transforms = get_transforms(args.resize, args.resize, mode='test', pretrained=True)
-    dataset = TestDataset(
-        data_paths,
-        transforms=transforms,
-    )
-
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        shuffle=False,
-        pin_memory=True,
-    )
-
-    return dataloader
 
 def main(args):
     
     print("Creating data loaders")
-    test_dataloader = build_loaders(args.test_path, args)
+    test_dataloader = build_test_loader(args.test_path, args.input_size, args.batch_size, args.num_workers)
     
     classes = torch.load(args.checkpoint)['classes']
     #print(classes)
 
-    model = build_model(args.net, pretrained=False, fine_tune=False, num_classes=len(classes))
-    # support muti gpu
+    if args.hub == 'tv':
+        model = build_model(args.net, pretrained=False, fine_tune=False, num_classes=len(classes))
+    elif args.hub == 'timm':
+        model = timm.create_model(args.net, pretrained=False, num_classes=len(classes))
+    else:
+        raise NameError('Model hub only support tv or timm')
+    # support multi gpu
     model = nn.DataParallel(model)#, device_ids=args.device)
     model.load_state_dict(torch.load(args.checkpoint)['model_state_dict'])
     model.cuda()
@@ -72,13 +63,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Classification Batch Inference')
 
     parser.add_argument('--test-path', default='./data/beauty', help='dataset')
+    parser.add_argument('--hub', default='tv', help='model hub, from torchvision(tv) or timm')
     parser.add_argument('--net', default='resnet50', help='model name')
     parser.add_argument('--device', default=[0], help='device')
     parser.add_argument('-b', '--batch-size', default=32, type=int)
-    parser.add_argument('-j', '--num_workers', default=8, type=int, metavar='N',
+    parser.add_argument('-j', '--num-workers', default=8, type=int, metavar='N',
                         help='number of data loading workers (default: 8)')
     parser.add_argument('--checkpoint', default='./checkpoints/model_2_600.pth', help='checkpoint')
-    parser.add_argument('--resize', default=224, type=int, help='size of resize')
+    parser.add_argument('--input-size', default=224, type=int, help='size of input')
 
     args = parser.parse_args()
 
