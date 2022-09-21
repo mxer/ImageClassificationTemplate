@@ -111,8 +111,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch-inf', type=bool, default=False, help='Set if use for batch inference')
     args = parser.parse_args()
 
-    image1 = 'test_images/ffda2bd6-181a-4ec6-9878-3d5a26c73a86_nsfw.jpg'
-    image2 = 'test_images/fffbb437-f692-4dba-921e-a5e9b11ebe51_sfw.jpg'
+    image1 = 'test_images/1.jpg'
+    image2 = 'test_images/2.jpg'
     
     device = torch.device('cuda:0') if args.device=='cuda' else torch.device(args.device)
     classes = torch.load(args.checkpoint, map_location=torch.device(device))['classes']
