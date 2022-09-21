@@ -20,3 +20,7 @@ python3.7+、gpu
 - **Deploy**
   + [x] onnx(support simplify and optimize)
   + [x] mnn
+
+- **Log**
+  + [ ] logger
+  + [ ] tensorboard
