@@ -18,5 +18,5 @@ python3.7+、gpu
   + [x] [timm](https://github.com/rwightman/pytorch-image-models)
   + [x] local
 - **Deploy**
-  + [x] onnx
+  + [x] onnx(support simplify and optimize)
   + [x] mnn

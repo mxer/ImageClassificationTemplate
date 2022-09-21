@@ -7,6 +7,7 @@ import timm
 import numpy as np
 import onnx
 import onnxruntime
+from onnxsim import simplify
 import cv2
 import argparse
 from models.build_model import build_model
@@ -33,12 +34,20 @@ class OnnxConvertor:
             verbose=True,
             opset_version=args.opset
         )
+
+        onnx_model = onnx.load(output_path)
+
         # batch inference.
         if batch_inf:
-            onnx_model = onnx.load(output_path)
             graph = onnx_model.graph
             graph.input[0].type.tensor_type.shape.dim[0].dim_param = 'None'
             onnx.save(onnx_model, output_path)
+
+        # simplify and optimize onnx model
+        model_simp, check = simplify(onnx_model, perform_optimization=True)
+        assert check, "Simplified ONNX model could not be validated"
+        onnx.save(model_simp, output_path)
+        
 
     def classify_pytorch(self, model, image_path):
         image = cv2.imread(image_path)
