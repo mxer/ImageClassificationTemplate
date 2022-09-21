@@ -154,6 +154,7 @@ def main(args):
         model = ReXNetV1(width_mult=1.0)
         param = torch.load('./models/pretrained/rexnetv1_1.0.pth', map_location=torch.device('cuda:0'))
         model.load_state_dict(param)
+        model.output[1] = nn.Conv2d(in_channels=model.output[1].in_channels, out_channels=len(classes), kernel_size=1, bias=True)
     else:
         raise NameError('Model hub only support tv, timm or local')
     summary(model, input_size=(args.batch_size, 3, args.input_size, args.input_size))
@@ -217,7 +218,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--data-dir', default='/ssd/nsfw', help='dataset')
     parser.add_argument('--hub', default='tv', choices=['tv', 'timm', 'local'], 
-                        help='model hub, from torchvision(tv) or timm or local')
+                        help='model hub, from torchvision(tv), timm or local')
     parser.add_argument('--net', default='resnet50', help='model name, available when hub is tv or timm')
     parser.add_argument('--weight', default='IMAGENET1K_V2',
                         help='the weight of pretrained model, available only when hub is tv')

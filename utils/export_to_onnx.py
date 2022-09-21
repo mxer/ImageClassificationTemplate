@@ -2,6 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import torch
+import torch.nn as nn
 import timm
 import numpy as np
 import onnx
@@ -9,6 +10,7 @@ import onnxruntime
 import cv2
 import argparse
 from models.build_model import build_model
+from models.rexnetv1 import ReXNetV1
 
 class OnnxConvertor:
     """Convert a pytorch model to a onnx model.
@@ -22,6 +24,7 @@ class OnnxConvertor:
         img = (img.transpose((2, 0, 1)) - 127.5) * 0.00784313725 # 1/127.5
         img = torch.from_numpy(img).unsqueeze(0).float()
         img = img.to(device)
+        # torch --> torchscript --> onnx
         torch.onnx.export(
             model,
             img,
@@ -85,9 +88,10 @@ class OnnxConvertor:
         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='export model to onnx.')
-    parser.add_argument('--hub', default='timm', help='model hub, from torchvision(tv) or timm')
+    parser.add_argument('--hub', default='tv', choices=['tv', 'timm', 'local'], 
+                        help='model hub, from torchvision(tv), timm or local')
     parser.add_argument('--net-name', type=str, default='efficientnet_b1_pruned', 
-                      help = 'The Neural Network name')
+                      help = 'The Neural Network name, available when hub is tv or timm')
     parser.add_argument('--checkpoint', type = str, default = 'exps/efficientnet_b1_pruned/efficientnet_b1_pruned@epoch25_399_0.0001.pth',
                       help = 'The path of checkpoint model')
     parser.add_argument('--device', type=str, default='cpu', choices=['cuda', 'cpu'], 
@@ -98,8 +102,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch-inf', type=bool, default=False, help='Set if use for batch inference')
     args = parser.parse_args()
 
-    image1 = 'test_images/1.jpg'
-    image2 = 'test_images/2.jpg'
+    image1 = 'test_images/ffda2bd6-181a-4ec6-9878-3d5a26c73a86_nsfw.jpg'
+    image2 = 'test_images/fffbb437-f692-4dba-921e-a5e9b11ebe51_sfw.jpg'
     
     device = torch.device('cuda:0') if args.device=='cuda' else torch.device(args.device)
     classes = torch.load(args.checkpoint, map_location=torch.device(device))['classes']
@@ -108,8 +112,12 @@ if __name__ == '__main__':
     elif args.hub == 'timm':
         #print(timm.list_models(pretrained=True))
         model = timm.create_model(args.net_name, pretrained=False, num_classes=len(classes))
+    elif args.hub == 'local':
+        # The follow two linea need change to corresponding model name and output layer name
+        model = ReXNetV1(width_mult=1.0)
+        model.output[1] = nn.Conv2d(in_channels=model.output[1].in_channels, out_channels=len(classes), kernel_size=1, bias=True)
     else:
-        raise NameError('Model hub only support tv or timm')
+        raise NameError('Model hub only support tv, timm or local')
     print('Loading trained model weightes...')
     model.load_state_dict({
         k.replace('module.', ''): v for k, v in 
