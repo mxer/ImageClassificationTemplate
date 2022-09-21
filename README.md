@@ -16,6 +16,7 @@ python3.7+、gpu
 - **Pretrain Model**
   + [x] [totchvision](https://pytorch.org/vision/stable/index.html)
   + [x] [timm](https://github.com/rwightman/pytorch-image-models)
+  + [x] local
 - **Deploy**
   + [x] onnx
   + [x] mnn

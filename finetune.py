@@ -13,6 +13,7 @@ from torchinfo import summary
 
 from data.datasets import *
 from models.build_model import build_model
+from models.rexnetv1 import ReXNetV1
 
 
 def get_lr(optimizer):
@@ -148,8 +149,13 @@ def main(args):
     elif args.hub == 'timm':
         #print(timm.list_models(pretrained=True))
         model = timm.create_model(args.net, pretrained=args.pretrain, num_classes=len(classes))
+    elif args.hub == 'local':
+        # The follow two lines need change to corresponding model name and model file name
+        model = ReXNetV1(width_mult=1.0)
+        param = torch.load('./models/pretrained/rexnetv1_1.0.pth', map_location=torch.device('cuda:0'))
+        model.load_state_dict(param)
     else:
-        raise NameError('Model hub only support tv or timm')
+        raise NameError('Model hub only support tv, timm or local')
     summary(model, input_size=(args.batch_size, 3, args.input_size, args.input_size))
     # support muti gpu
     model = nn.DataParallel(model, device_ids=args.device)
@@ -207,12 +213,14 @@ def main(args):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='PyTorch/timm Finetune Training')
+    parser = argparse.ArgumentParser(description='PyTorch Classification Finetune Training')
 
-    parser.add_argument('--data-dir', default='/data', help='dataset')
-    parser.add_argument('--hub', default='tv', help='model hub, from torchvision(tv) or timm')
-    parser.add_argument('--net', default='resnet50', help='model name')
-    parser.add_argument('--weight', default='IMAGENET1K_V2', help='the weight of pretrained model')
+    parser.add_argument('--data-dir', default='/ssd/nsfw', help='dataset')
+    parser.add_argument('--hub', default='tv', choices=['tv', 'timm', 'local'], 
+                        help='model hub, from torchvision(tv) or timm or local')
+    parser.add_argument('--net', default='resnet50', help='model name, available when hub is tv or timm')
+    parser.add_argument('--weight', default='IMAGENET1K_V2',
+                        help='the weight of pretrained model, available only when hub is tv')
     parser.add_argument('--device', default=[0], help='device')
     parser.add_argument('--pretrain', default=True, help='use pretrained weights or train from scratch')
     parser.add_argument('-b', '--batch-size', default=512, type=int)
@@ -220,7 +228,7 @@ if __name__ == "__main__":
                         help='number of total epochs to run')
     parser.add_argument('--step', default='10,20,25', type=str,
                         help='steps for MultiStepLR, the last num should less then the num of epochs')
-    parser.add_argument('-j', '--num-workers', default=8, type=int, metavar='N',
+    parser.add_argument('-j', '--num_workers', default=8, type=int, metavar='N',
                         help='number of data loading workers (default: 8)')
     parser.add_argument('--optim', default='sgd', help='optimization method')
     parser.add_argument('--lr', default=0.0001, type=float,
@@ -231,11 +239,11 @@ if __name__ == "__main__":
                         metavar='W', help='weight decay (default: 1e-4)',
                         dest='weight_decay')
     parser.add_argument('--lr-gamma', default=0.1, type=float, help='decrease lr by a factor of lr-gamma')
-    parser.add_argument('-ls', '--label-smoothing', type=float, default=0.0,
+    parser.add_argument('-ls', '--label_smoothing', type=float, default=0.0,
                         help='label smoothing rate in cross entropy loss')
     parser.add_argument('--print-freq', default=10, type=int, help='print frequency')
     parser.add_argument('--eval-freq', default=50, type=int, help='validation frequency of batchs')
-    parser.add_argument('--save-path', default='./exps', help='path where to save')
+    parser.add_argument('--save_path', default='./exps', help='path where to save')
     parser.add_argument('--resume', default=False, help='resume from checkpoint')
     parser.add_argument('--checkpoint', help='the resume checkpoint, need --resume to be True')
     parser.add_argument('--input-size', default=224, type=int, help='size of input')
